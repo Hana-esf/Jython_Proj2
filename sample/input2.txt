@@ -1,0 +1,61 @@
+import Book
+import Library
+
+class Magazine(Book1,Book2,Book3){
+    int noPages
+    string name
+    Page[200] pages
+
+    def Magazine(string name, int noPages){
+        self.name = name
+        self.noPages = noPages
+    }
+
+    def float calculatePrice(int weight){
+        int base = 100
+        float price = base
+        price += weight * self.noPages
+
+        return price
+    }
+
+    def void nestedTest(){
+        if(true) {
+            int a
+            for i in range(100){
+                if(false){
+                    bool e
+                }
+
+                if(true){
+                    bool h
+                    while(flag){
+                        int f
+
+                        if(false){
+                            float g
+
+                        }elif(false){
+                            int c = 30
+
+                        }else{
+                            float d
+                        }
+                    }
+                }
+
+                for i in range(100){
+                    int b = 200
+                }
+            }
+        }
+    }
+
+    def void main(){
+
+        Magazine mgz = Magazine(magazine, 200)
+        float price = mgz.calculatePrice(2)
+
+        print(price)
+    }
+}
