@@ -13,23 +13,25 @@ import java.util.Map;
 
 public class ProgramPrinter implements jythonListener {
     private int hashNumber = 0;
+    String[] importedClasses = new String[10];
+    int numberOfimportedClasses = 0;
     private ArrayList<Hashtable<String, String>> items = new ArrayList<Hashtable<String, String>>();
     @Override
     public void enterProgram(jythonParser.ProgramContext ctx) {
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         System.out.println("---------program: 1 ---------");
-        System.out.println(ctx.getChild(0).getText());
     }
 
     @Override
     public void exitProgram(jythonParser.ProgramContext ctx) {
-
+        printItem();
     }
 
     @Override
     public void enterImportclass(jythonParser.ImportclassContext ctx) {
         items.get(0).put("import_" + ctx.CLASSNAME(), "import (name: " + ctx.CLASSNAME() + ")");
+        importedClasses[numberOfimportedClasses] = ctx.CLASSNAME().getText();
     }
 
     @Override
@@ -38,7 +40,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterClassDef(jythonParser.ClassDefContext ctx) {
-//        if(items.size() == 0){
+//        if(items.size() == 1){
 //            Hashtable<String, String> temp = new Hashtable<>();
 //            items.add(temp);
 //        }
@@ -48,8 +50,7 @@ public class ProgramPrinter implements jythonListener {
         }
         tempStr += ctx.CLASSNAME(ctx.CLASSNAME().size() - 1);
         tempStr += ")";
-        items.get(hashNumber).put("Class_" + ctx.CLASSNAME(0),tempStr);
-        System.out.println(printItem(items.get(hashNumber)));
+        items.get(0).put("Class_" + ctx.CLASSNAME(0),tempStr);
     }
 
     @Override
@@ -70,20 +71,23 @@ public class ProgramPrinter implements jythonListener {
             if(tmp.equals("int") || tmp.equals("float") || tmp.equals("string") || tmp.equals("bool")) {
                 tempStr = "Field ";
                 tempStr += "(name: " + ctx.getChild(0).getChild(1).getText() +") (type: [ classType="+
-                        ctx.getChild(0).getChild(0).getText() + ", isDefiend: ???";
+                        ctx.getChild(0).getChild(0).getText() + ", isDefiend: True]";
                 items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(1).getText(),tempStr);
-                System.out.println(printItem(items.get(hashNumber)));
             }else if(ctx.getChild(0).getChild(1).getText().equals("[")) {
                 tempStr = "ClassArrayField (name: " + ctx.getChild(0).getChild(4).getText() +") (type: [ classType="+
-                        ctx.getChild(0).getChild(0).getText() + ", isDefiend: ???";
+                        ctx.getChild(0).getChild(0).getText() + ", isDefiend: False]";
                 items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(4).getText(),tempStr);
-                System.out.println(printItem(items.get(hashNumber)));
             }else {
+                boolean isDefined = false;
+                for(int i = 0; i < numberOfimportedClasses; i++){
+                    if(ctx.getChild(0).getChild(0).getText().equals(importedClasses[i])){
+                        isDefined = true;
+                    }
+                }
                 tempStr = "ClassField ";
                 tempStr += "(name: " + ctx.getChild(0).getChild(1).getText() +") (type: [ classType="+
-                        ctx.getChild(0).getChild(0).getText() + ", isDefiend: ???";
+                        ctx.getChild(0).getChild(0).getText() + ", isDefiend:" + isDefined + "]";
                 items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(1).getText(),tempStr);
-                System.out.println(printItem(items.get(hashNumber)));
             }
         }
     }
@@ -151,13 +155,16 @@ public class ProgramPrinter implements jythonListener {
             tempStr += "]";
         }
         items.get(hashNumber).put("Method_" + ctx.getChild(2).getText(),tempStr);
-        System.out.println(printItem(items.get(hashNumber)));
+        Hashtable<String, String> temp = new Hashtable<>();
+        items.add(temp);
+        hashNumber = items.size();
+
     }
 
 
     @Override
     public void exitMethodDec(jythonParser.MethodDecContext ctx) {
-
+        hashNumber = 1;
     }
 
     @Override
@@ -167,8 +174,6 @@ public class ProgramPrinter implements jythonListener {
             items.add(temp);
             hashNumber++;
         }
-        String tmp = ctx.getChild(3).getText();
-        System.out.println(tmp);
         String tempStr = "Constructor (name : " + ctx.getChild(1).getText() + ") [parameter list: " ;
         int counter = 3;
         if(!ctx.getChild(counter).getText().equals(")")){
@@ -191,12 +196,13 @@ public class ProgramPrinter implements jythonListener {
         }
         tempStr += "]";
         items.get(hashNumber).put("Constructor_" + ctx.getChild(1).getText(),tempStr);
-        System.out.println(printItem(items.get(hashNumber)));
-
+        Hashtable<String, String> temp = new Hashtable<>();
+        items.add(temp);
+        hashNumber = items.size();
     }
     @Override
     public void exitConstructor(jythonParser.ConstructorContext ctx) {
-
+        hashNumber = 1;
     }
 
     @Override
@@ -211,6 +217,30 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterStatement(jythonParser.StatementContext ctx){
+        System.out.println(ctx.getChild(0).getText());
+//        String tmp = ctx.getChild(0).getText();
+//        String tempStr;
+//        if(tmp.equals("int") || tmp.equals("float") || tmp.equals("string") || tmp.equals("bool")) {
+//            tempStr = "Field ";
+//            tempStr += "(name: " + ctx.getChild(1).getText() +") (type: [ classType="+
+//                    ctx.getChild(0).getText() + ", isDefiend: True]";
+//            items.get(hashNumber).put("Field_" + ctx.getChild(1).getText(),tempStr);
+//        }else if(ctx.getChild(1).getText().equals("[")) {
+//            tempStr = "ClassArrayField (name: " + ctx.getChild(4).getText() +") (type: [ classType="+
+//                    ctx.getChild(0).getText() + ", isDefiend: False]";
+//            items.get(hashNumber).put("Field_" + ctx.getChild(4).getText(),tempStr);
+//        }else {
+//            boolean isDefined = false;
+//            for(int i = 0; i < numberOfimportedClasses; i++){
+//                if(ctx.getChild(0).getText().equals(importedClasses[i])){
+//                    isDefined = true;
+//                }
+//            }
+//            tempStr = "ClassField ";
+//            tempStr += "(name: " + ctx.getChild(1).getText() +") (type: [ classType="+
+//                    ctx.getChild(0).getText() + ", isDefiend:" + isDefined + "]";
+//            items.get(hashNumber).put("Field_" + ctx.getChild(1).getText(),tempStr);
+//        }
 
     }
 
@@ -413,17 +443,14 @@ public class ProgramPrinter implements jythonListener {
 //                printItem() + "---------------------------------------------\n";
 //    }
 
-    public String printItem(Hashtable<String, String> tempHash){
-
-        String itemStr = "";
-        for (Map.Entry<String,String> entry : tempHash.entrySet()) {
-            itemStr += "Key = " + entry.getKey() + " | Value = " + entry.getValue() + "\n";
+    public void printItem(){
+        for(int i = 0; i < items.size(); i++) {
+            String itemStr = "";
+            for (Map.Entry<String, String> entry : items.get(i).entrySet()) {
+                itemStr += "Key = " + entry.getKey() + " | Value = " + entry.getValue() + "\n";
+            }
+            System.out.println(itemStr);
         }
-        //System.out.println(tempHash.size());
-//        while (e.hasMoreElements()) {
-//            String key = e.nextElement();
-//            itemStr += "key = " + key + " | Value = " + tempHash.get(key) + "\n";
-//        }
-        return itemStr;
+
     }
 }
