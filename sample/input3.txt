@@ -19,6 +19,7 @@ class Human(Nothing, Nothing2){
         newFood = food
         while(self.isHungry){
             Food newFood = Food()
+            Drink water
             if(a == 3){
             Food newFood = Food()
                 if( b == 4){

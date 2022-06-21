@@ -1,30 +1,30 @@
-1. import Nothing
-2. import Nothing2
-3. class Human(Nothing, Nothing2){
-4.     Nose nose
-5.     Hand[2] hands
-6.     Leg[2] legs
-7.     int calories
-8.     bool isHungry
-9.
-10.    def Human(Nose n){
-11.        self.nose = n
-12.    }
-13.    def Voice speak(){
-14.        Voice voice
-15.        return voice
-16.    }
-17.    def void eat(Food food, int c){
-18.         calories += c
-19.         newFood = food
-20.         Drink water
-21.         while(self.isHungry){
-22.             Food newFood = Food()
-23.             if(1){
-24.                 int a
-25.             }
-26.         eat(newFood)
-27.         self.isHungry = self.checkIsHungry()
-28.         }
-29.     }
-30. }
+import Nothing
+import Nothing2
+class Human(Nothing, Nothing2){
+    Nose nose
+    Hand[2] hands
+    Leg[2] legs
+    int calories
+    bool isHungry
+
+    def Human(Nose n){
+        self.nose = n
+    }
+    def Voice speak(){
+        Voice voice
+        return voice
+    }
+    def void eat(Food food, int c){
+        calories += c
+        newFood = food
+        Drink water
+        while(self.isHungry){
+            Food newFood = Food()
+            if(s == 1){
+                int a
+            }
+            eat(newFood)
+            self.isHungry = self.checkIsHungry()
+        }
+    }
+}

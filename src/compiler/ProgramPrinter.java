@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.sql.Array;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -13,14 +14,16 @@ import java.util.Map;
 
 public class ProgramPrinter implements jythonListener {
     private int hashNumber = 0;
+    private int previousHashNum;
     String[] importedClasses = new String[10];
+    ArrayList<String> blockStarts = new ArrayList();
     int numberOfimportedClasses = 0;
     private ArrayList<Hashtable<String, String>> items = new ArrayList<Hashtable<String, String>>();
     @Override
     public void enterProgram(jythonParser.ProgramContext ctx) {
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
-        System.out.println("---------program: 1 ---------");
+        blockStarts.add("---------program:" + ctx.start.getLine() + "---------");
     }
 
     @Override
@@ -51,6 +54,7 @@ public class ProgramPrinter implements jythonListener {
         tempStr += ctx.CLASSNAME(ctx.CLASSNAME().size() - 1);
         tempStr += ")";
         items.get(0).put("Class_" + ctx.CLASSNAME(0),tempStr);
+        blockStarts.add("---------" + ctx.CLASSNAME(0) + ":" + ctx.start.getLine() + "---------");
     }
 
     @Override
@@ -118,6 +122,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterMethodDec(jythonParser.MethodDecContext ctx) {
+        blockStarts.add("---------" + ctx.getChild(2).getText() + ":" + ctx.start.getLine() + "---------");
         if(items.size() == 1){
             Hashtable<String, String> temp = new Hashtable<>();
             items.add(temp);
@@ -134,9 +139,9 @@ public class ProgramPrinter implements jythonListener {
         tempStr += "]) ";
 
         int counter = 4;
+        int camaCounter = 0;
         if(!ctx.getChild(counter).getText().equals(")")){
             tempStr += "[parameter list: ";
-            int camaCounter = 0;
             for (int i = 0; i < ctx.getChild(counter).getText().length(); i++) {
                 if (ctx.getChild(counter).getText().charAt(i) == ',') {
                     camaCounter++;
@@ -151,14 +156,22 @@ public class ProgramPrinter implements jythonListener {
                 if(i <2 * camaCounter)
                     tempStr += ", ";
             }
-            counter++;
             tempStr += "]";
         }
         items.get(hashNumber).put("Method_" + ctx.getChild(2).getText(),tempStr);
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
-        hashNumber = items.size();
-
+        hashNumber = items.size()-1;
+        if(!ctx.getChild(counter).getText().equals(")")) {
+            for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
+                if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
+                    continue;
+                }
+                tempStr = "Parameter (name:" + ctx.getChild(counter).getChild(i).getChild(1).getText() + ") (type:" + ctx.getChild(counter).getChild(i).getChild(0).getText() + ") (index: " + (j + 1) + ")";
+                items.get(hashNumber).put("Field_" + ctx.getChild(counter).getChild(i).getChild(1).getText(), tempStr);
+                j++;
+            }
+        }
     }
 
 
@@ -169,6 +182,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterConstructor(jythonParser.ConstructorContext ctx) {
+        blockStarts.add("---------" + ctx.getChild(1).getText() + ":" + ctx.start.getLine() + "---------");
         if(items.size() == 1){
             Hashtable<String, String> temp = new Hashtable<>();
             items.add(temp);
@@ -176,8 +190,8 @@ public class ProgramPrinter implements jythonListener {
         }
         String tempStr = "Constructor (name : " + ctx.getChild(1).getText() + ") [parameter list: " ;
         int counter = 3;
+        int camaCounter = 0;
         if(!ctx.getChild(counter).getText().equals(")")){
-            int camaCounter = 0;
             for (int i = 0; i < ctx.getChild(counter).getText().length(); i++) {
                 if (ctx.getChild(counter).getText().charAt(i) == ',') {
                     camaCounter++;
@@ -192,13 +206,22 @@ public class ProgramPrinter implements jythonListener {
                 if(i <2 * camaCounter)
                     tempStr += ", ";
             }
-            counter++;
         }
         tempStr += "]";
         items.get(hashNumber).put("Constructor_" + ctx.getChild(1).getText(),tempStr);
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
-        hashNumber = items.size();
+        hashNumber = items.size()-1;
+        if(!ctx.getChild(counter).getText().equals(")")) {
+            for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
+                if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
+                    continue;
+                }
+                tempStr = "Parameter (name:" + ctx.getChild(counter).getChild(i).getChild(1).getText() + ") (type:" + ctx.getChild(counter).getChild(i).getChild(0).getText() + ") (index: " + (j + 1) + ")";
+                items.get(hashNumber).put("Field_" + ctx.getChild(counter).getChild(i).getChild(1).getText(), tempStr);
+                j++;
+            }
+        }
     }
     @Override
     public void exitConstructor(jythonParser.ConstructorContext ctx) {
@@ -217,31 +240,41 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterStatement(jythonParser.StatementContext ctx){
-        System.out.println(ctx.getChild(0).getText());
-//        String tmp = ctx.getChild(0).getText();
-//        String tempStr;
-//        if(tmp.equals("int") || tmp.equals("float") || tmp.equals("string") || tmp.equals("bool")) {
-//            tempStr = "Field ";
-//            tempStr += "(name: " + ctx.getChild(1).getText() +") (type: [ classType="+
-//                    ctx.getChild(0).getText() + ", isDefiend: True]";
-//            items.get(hashNumber).put("Field_" + ctx.getChild(1).getText(),tempStr);
-//        }else if(ctx.getChild(1).getText().equals("[")) {
-//            tempStr = "ClassArrayField (name: " + ctx.getChild(4).getText() +") (type: [ classType="+
-//                    ctx.getChild(0).getText() + ", isDefiend: False]";
-//            items.get(hashNumber).put("Field_" + ctx.getChild(4).getText(),tempStr);
-//        }else {
-//            boolean isDefined = false;
-//            for(int i = 0; i < numberOfimportedClasses; i++){
-//                if(ctx.getChild(0).getText().equals(importedClasses[i])){
-//                    isDefined = true;
-//                }
-//            }
-//            tempStr = "ClassField ";
-//            tempStr += "(name: " + ctx.getChild(1).getText() +") (type: [ classType="+
-//                    ctx.getChild(0).getText() + ", isDefiend:" + isDefined + "]";
-//            items.get(hashNumber).put("Field_" + ctx.getChild(1).getText(),tempStr);
-//        }
+        //tu input if(1) gozashte ghalate?
+//        System.out.println(ctx.getParent().getClass().getName());
+//        System.out.println(ctx.getText());
+//        System.out.println("__________");
+        if(!ctx.getChild(0).getChild(0).getText().equals("if") &&
+                !ctx.getChild(0).getChild(0).getText().equals("while")){
+            if(ctx.getChild(0).getClass().getName().contains("VarDec")) {
+                boolean isDefined = false;
+                for(int i = 0; i < numberOfimportedClasses; i++){
+                    if(ctx.getChild(0).getChild(0).getText().equals(importedClasses[i])){
+                        isDefined = true;
+                    }
+                }
+                if(ctx.getChild(0).getChild(0).getText().equals("int")||ctx.getChild(0).getChild(0).getText().equals("string")
+                        ||ctx.getChild(0).getChild(0).getText().equals("float")||ctx.getChild(0).getChild(0).getText().equals("bool"))
+                    isDefined = true;
+                String tempStr = "MethodField (name: " + ctx.getChild(0).getChild(1).getText() +
+                        ") (type: [classtyped= "+ ctx.getChild(0).getChild(0).getText()  +", isDefiend:" + isDefined + "])";
+                items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(1).getText(),tempStr);
+            }else if(ctx.getChild(0).getClass().getName().contains("Assignment") && ctx.getChild(0).getChild(0).getClass().getName().contains("VarDec")){
+                boolean isDefined = false;
+                for(int i = 0; i < numberOfimportedClasses; i++){
+                    if(ctx.getChild(0).getChild(0).getText().equals(importedClasses[i])){
+                        isDefined = true;
+                    }
+                }
+                if(ctx.getChild(0).getChild(0).getText().equals("int")||ctx.getChild(0).getChild(0).getText().equals("string")
+                        ||ctx.getChild(0).getChild(0).getText().equals("float")||ctx.getChild(0).getChild(0).getText().equals("bool"))
+                    isDefined = true;
+                String tempStr = "MethodField (name: " + ctx.getChild(0).getChild(0).getChild(1).getText() +
+                        ") (type: [classtyped= "+ ctx.getChild(0).getChild(0).getChild(0).getText()  +", isDefiend:" + isDefined + "])";
+                items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(0).getChild(1).getText(),tempStr);
 
+            }
+        }
     }
 
     @Override
@@ -280,31 +313,47 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterIf_statment(jythonParser.If_statmentContext ctx) {
-
+        blockStarts.add("---------if:" + ctx.start.getLine() + "---------");
+        Hashtable<String, String> temp = new Hashtable<>();
+        items.add(temp);
+        previousHashNum = hashNumber;
+        hashNumber = items.size()-1;
     }
 
     @Override
     public void exitIf_statment(jythonParser.If_statmentContext ctx) {
-
+        hashNumber = previousHashNum;
+        previousHashNum--;
     }
 
     @Override
     public void enterWhile_statment(jythonParser.While_statmentContext ctx) {
-
+        blockStarts.add("---------while:" + ctx.start.getLine() + "---------");
+        Hashtable<String, String> temp = new Hashtable<>();
+        items.add(temp);
+        previousHashNum = hashNumber;
+        hashNumber = items.size()-1;
     }
 
     @Override
     public void exitWhile_statment(jythonParser.While_statmentContext ctx) {
-
+        hashNumber = previousHashNum;
+        previousHashNum--;
     }
 
     @Override
     public void enterIf_else_statment(jythonParser.If_else_statmentContext ctx) {
-
+        blockStarts.add("---------if_else:" + ctx.start.getLine() + "---------");
+        Hashtable<String, String> temp = new Hashtable<>();
+        items.add(temp);
+        previousHashNum = hashNumber;
+        hashNumber = items.size()-1;
     }
 
     @Override
     public void exitIf_else_statment(jythonParser.If_else_statmentContext ctx) {
+        hashNumber = previousHashNum;
+        previousHashNum--;
 
     }
 
@@ -320,11 +369,18 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterFor_statment(jythonParser.For_statmentContext ctx) {
+        blockStarts.add("---------for:" + ctx.start.getLine() + "---------");
+        Hashtable<String, String> temp = new Hashtable<>();
+        items.add(temp);
+        previousHashNum = hashNumber;
+        hashNumber = items.size()-1;
 
     }
 
     @Override
     public void exitFor_statment(jythonParser.For_statmentContext ctx) {
+        hashNumber = previousHashNum;
+        previousHashNum--;
 
     }
 
@@ -449,7 +505,9 @@ public class ProgramPrinter implements jythonListener {
             for (Map.Entry<String, String> entry : items.get(i).entrySet()) {
                 itemStr += "Key = " + entry.getKey() + " | Value = " + entry.getValue() + "\n";
             }
+            System.out.println(blockStarts.get(i));
             System.out.println(itemStr);
+            System.out.println("==========================================================================================");
         }
 
     }
