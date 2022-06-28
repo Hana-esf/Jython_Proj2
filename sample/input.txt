@@ -6,7 +6,6 @@ class Human(Nothing, Nothing2){
     Leg[2] legs
     int calories
     bool isHungry
-    Water nose
 
     def Human(Nose n){
         self.nose = n
@@ -17,8 +16,8 @@ class Human(Nothing, Nothing2){
     }
     def void eat(Food food, int c){
         calories += c
-        newFood = food
         Drink water
+        newFood = food
         while(self.isHungry){
             Food newFood = Food()
             if(s == 1){

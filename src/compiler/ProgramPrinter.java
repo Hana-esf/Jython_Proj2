@@ -18,6 +18,9 @@ public class ProgramPrinter implements jythonListener {
     private int previousHashNum;
     String[] importedClasses = new String[10];
     ArrayList<String> blockStarts = new ArrayList();
+
+    int[] tempHierarchical = new int[10];
+    int tempIndexOfHierarchical = 0;
     int numberOfimportedClasses = 0;
     String[][] methodInformations = new String[100][4];
     int numberOfMethodInformations = 0;
@@ -31,6 +34,8 @@ public class ProgramPrinter implements jythonListener {
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         blockStarts.add("---------program:" + ctx.start.getLine() + "---------");
+        tempHierarchical[0] = 1;
+        tempIndexOfHierarchical = 1;
     }
 
     @Override
@@ -42,6 +47,7 @@ public class ProgramPrinter implements jythonListener {
     public void enterImportclass(jythonParser.ImportclassContext ctx) {
         items.get(0).put("import_" + ctx.CLASSNAME(), "import (name: " + ctx.CLASSNAME() + ")");
         importedClasses[numberOfimportedClasses] = ctx.CLASSNAME().getText();
+        numberOfimportedClasses++;
     }
 
     @Override
@@ -50,10 +56,6 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterClassDef(jythonParser.ClassDefContext ctx) {
-//        if(items.size() == 1){
-//            Hashtable<String, String> temp = new Hashtable<>();
-//            items.add(temp);
-//        }
         String tempStr = "Class (name: " + ctx.CLASSNAME(0) + ")" + "(parent: ";
         for (int i = 1; i < ctx.CLASSNAME().size() - 1; i++) {
             tempStr += ctx.CLASSNAME(i) + ", ";
@@ -71,7 +73,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterClass_body(jythonParser.Class_bodyContext ctx) {
-
+        //System.out.println(ctx.start.getLine());
     }
 
     @Override
@@ -86,7 +88,6 @@ public class ProgramPrinter implements jythonListener {
             items.add(temp);
             hashNumber++;
         }
-
         boolean isError = false;
         for (int i = 0; i < numberOfattributeInformations; i++) {
             if (attributeInformations[i][1].equals(ctx.getChild(1).getText()) && attributeInformations[i][4].equals(String.valueOf(hashNumber))) {
@@ -110,6 +111,12 @@ public class ProgramPrinter implements jythonListener {
             tempStr += "(name: " + ctx.getChild(1).getText() + ") (type: [ classType=" +
                     ctx.getChild(0).getText() + ", isDefiend: True]";
         } else {
+            for(int i = 0; i < numberOfimportedClasses; i++){
+                if (importedClasses[i].equals(ctx.getChild(0).getText()))
+                    break;
+                if(i == numberOfimportedClasses - 1)
+                    System.out.println("Error105 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "],cannot find class [" + ctx.getChild(0).getText() + "]");
+            }
             boolean isDefined = false;
             for (int i = 0; i < numberOfimportedClasses; i++) {
                 if (ctx.getChild(0).getText().equals(importedClasses[i])) {
@@ -133,6 +140,12 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterArrayDec(jythonParser.ArrayDecContext ctx) {
+        if (items.size() == 1) {
+            Hashtable<String, String> temp = new Hashtable<>();
+            items.add(temp);
+            hashNumber++;
+        }
+
         boolean isError = false;
         for (int i = 0; i < numberOfattributeInformations; i++) {
             if (attributeInformations[i][1].equals(ctx.getChild(4).getText()) && attributeInformations[i][4].equals(String.valueOf(hashNumber))) {
@@ -148,13 +161,7 @@ public class ProgramPrinter implements jythonListener {
             attributeInformations[numberOfattributeInformations][4] = String.valueOf(hashNumber);
             numberOfattributeInformations++;
         }
-        if (items.size() == 1) {
-            Hashtable<String, String> temp = new Hashtable<>();
-            items.add(temp);
-            hashNumber++;
-        }
 
-        String tmp = ctx.getChild(0).getText();
         String tempStr = "ClassArrayField (name: " + ctx.getChild(4).getText() + ") (type: [ classType=" +
                 ctx.getChild(0).getText() + ", isDefiend: False]";
         if (isError)
@@ -233,6 +240,8 @@ public class ProgramPrinter implements jythonListener {
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         hashNumber = items.size() - 1;
+        tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
+        tempIndexOfHierarchical++;
         if (!ctx.getChild(counter).getText().equals(")")) {
             for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
                 if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
@@ -249,6 +258,7 @@ public class ProgramPrinter implements jythonListener {
     @Override
     public void exitMethodDec(jythonParser.MethodDecContext ctx) {
         hashNumber = 1;
+        tempIndexOfHierarchical = 1;
     }
 
     @Override
@@ -283,6 +293,8 @@ public class ProgramPrinter implements jythonListener {
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         hashNumber = items.size() - 1;
+        tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
+        tempIndexOfHierarchical++;
         if (!ctx.getChild(counter).getText().equals(")")) {
             for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
                 if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
@@ -298,6 +310,8 @@ public class ProgramPrinter implements jythonListener {
     @Override
     public void exitConstructor(jythonParser.ConstructorContext ctx) {
         hashNumber = 1;
+        tempIndexOfHierarchical = 1;
+
     }
 
     @Override
@@ -311,43 +325,6 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterStatement(jythonParser.StatementContext ctx) {
-//        System.out.println(ctx.getChild(0).getText() + "  "  + ctx.start.getLine());
-//        System.out.println(ctx);
-/*
-        if(ctx.getChild(0).getClass().getName().contains("Assignment")) {
-            if(ctx.getChild(0).getChild(2).getText().contains("(")){
-                if(ctx.getChild(0).getChild(2).getText().contains("."){
-
-                }
-            }else{
-                Enumeration<String> e = items.get(1).keys();
-                boolean isDefined = false;
-                while (e.hasMoreElements()) {
-                    String key = e.nextElement();
-                    if (key.equals("Field_" + ctx.getChild(0).getChild(2).getText())){
-                        isDefined = true;
-                        break;
-                    }
-                }
-                if(!isDefined){
-                    e = items.get(hashNumber).keys();
-                    while (e.hasMoreElements()) {
-                        String key = e.nextElement();
-                        if (key.equals("Field_" + ctx.getChild(0).getChild(2).getText())){
-                            isDefined = true;
-                            break;
-                        }
-                    }
-                }
-                if(!isDefined)
-                    System.out.println();
-           }
-        }
-*/
-//        tu input if(1) gozashte ghalate?
-//        System.out.println(ctx.getParent().getClass().getName());
-//        System.out.println(ctx.getText());
-//        System.out.println("__________");
         if (!ctx.getChild(0).getChild(0).getText().equals("if") &&
                 !ctx.getChild(0).getChild(0).getText().equals("while")) {
             if (ctx.getChild(0).getClass().getName().contains("VarDec")) {
@@ -378,6 +355,40 @@ public class ProgramPrinter implements jythonListener {
                 items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(0).getChild(1).getText(), tempStr);
 
             }
+        }
+        if (ctx.getChild(0).getClass().getName().contains("Assignment")){
+            boolean isAvailable = false;
+            String tempStr = "";
+            if (!ctx.getChild(0).getChild(0).getClass().getName().contains("VarDec")){
+                tempStr = ctx.getChild(0).getChild(0).getText();
+                if (ctx.getChild(0).getChild(0).getText().contains("self")) {
+                    tempStr = ctx.getChild(0).getChild(0).getChild(2).getText();
+                }
+            }else{
+                tempStr = ctx.getChild(0).getChild(0).getChild(1).getText();
+            }
+            for(int i = 0; tempHierarchical[i] != 0; i++){
+                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
+                    isAvailable = true;
+                    break;
+                }
+            }
+            if(!isAvailable)
+                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
+
+            if(ctx.getChild(0).getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")) {
+                tempStr = ctx.getChild(0).getChild(2).getChild(2).getText();
+            }else if(!ctx.getChild(0).getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")){
+                tempStr = ctx.getChild(0).getChild(2).getText();
+            }
+            for(int i = 0; tempHierarchical[i] != 0; i++){
+                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
+                    isAvailable = true;
+                    break;
+                }
+            }
+            if(!isAvailable)
+                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
         }
     }
 
@@ -417,47 +428,65 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterIf_statment(jythonParser.If_statmentContext ctx) {
-        blockStarts.add("---------if:" + ctx.start.getLine() + "---------");
+        if(ctx.depth() < 8)
+            blockStarts.add("---------if:" + ctx.start.getLine() + "---------");
+        else
+            blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         previousHashNum = hashNumber;
+        tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
+        tempIndexOfHierarchical++;
         hashNumber = items.size() - 1;
     }
 
     @Override
     public void exitIf_statment(jythonParser.If_statmentContext ctx) {
         hashNumber = previousHashNum;
+        tempIndexOfHierarchical--;
         previousHashNum--;
     }
 
     @Override
     public void enterWhile_statment(jythonParser.While_statmentContext ctx) {
-        blockStarts.add("---------while:" + ctx.start.getLine() + "---------");
+        if(ctx.depth() < 8)
+            blockStarts.add("---------while:" + ctx.start.getLine() + "---------");
+        else
+            blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         previousHashNum = hashNumber;
         hashNumber = items.size() - 1;
+        tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
+        tempIndexOfHierarchical++;
     }
 
     @Override
     public void exitWhile_statment(jythonParser.While_statmentContext ctx) {
         hashNumber = previousHashNum;
+        tempIndexOfHierarchical--;
         previousHashNum--;
     }
 
     @Override
     public void enterIf_else_statment(jythonParser.If_else_statmentContext ctx) {
-        blockStarts.add("---------if_else:" + ctx.start.getLine() + "---------");
+        if(ctx.depth() < 8)
+            blockStarts.add("---------if_else:" + ctx.start.getLine() + "---------");
+        else
+            blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         previousHashNum = hashNumber;
         hashNumber = items.size() - 1;
+        tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
+
     }
 
     @Override
     public void exitIf_else_statment(jythonParser.If_else_statmentContext ctx) {
         hashNumber = previousHashNum;
         previousHashNum--;
+        tempIndexOfHierarchical--;
 
     }
 
@@ -473,7 +502,10 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterFor_statment(jythonParser.For_statmentContext ctx) {
-        blockStarts.add("---------for:" + ctx.start.getLine() + "---------");
+        if(ctx.depth() < 8)
+            blockStarts.add("---------for:" + ctx.start.getLine() + "---------");
+        else
+            blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
         Hashtable<String, String> temp = new Hashtable<>();
         items.add(temp);
         previousHashNum = hashNumber;
@@ -485,12 +517,16 @@ public class ProgramPrinter implements jythonListener {
     public void exitFor_statment(jythonParser.For_statmentContext ctx) {
         hashNumber = previousHashNum;
         previousHashNum--;
+        tempIndexOfHierarchical--;
 
     }
 
     @Override
     public void enterMethod_call(jythonParser.Method_callContext ctx) {
-
+/*
+        String tempStr = items.get(1).get("Method_" + ctx.getChild(0).getText());
+        System.out.println(ctx.getChild(1).getText() + " " + ctx.start.getLine());
+*/
     }
 
     @Override
@@ -500,6 +536,40 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterAssignment(jythonParser.AssignmentContext ctx) {
+        System.out.println(ctx.getChild(0).getText() + " " + ctx.start.getLine());
+
+            boolean isAvailable = false;
+            String tempStr = "";
+            if (!ctx.getChild(0).getClass().getName().contains("VarDec")){
+                tempStr = ctx.getChild(0).getText();
+                if (ctx.getChild(0).getText().contains("self")) {
+                    tempStr = ctx.getChild(0).getChild(2).getText();
+                }
+            }else{
+                tempStr = ctx.getChild(0).getChild(1).getText();
+            }
+            for(int i = 0; tempHierarchical[i] != 0; i++){
+                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
+                    isAvailable = true;
+                    break;
+                }
+            }
+            if(!isAvailable)
+                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
+
+            if(ctx.getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")) {
+                tempStr = ctx.getChild(2).getChild(2).getText();
+            }else if(!ctx.getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")){
+                tempStr = ctx.getChild(2).getText();
+            }
+            for(int i = 0; tempHierarchical[i] != 0; i++){
+                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
+                    isAvailable = true;
+                    break;
+                }
+            }
+            if(!isAvailable)
+                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
 
     }
 
@@ -613,6 +683,5 @@ public class ProgramPrinter implements jythonListener {
             System.out.println(itemStr);
             System.out.println("==========================================================================================");
         }
-
     }
 }
