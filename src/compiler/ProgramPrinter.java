@@ -22,7 +22,7 @@ public class ProgramPrinter implements jythonListener {
     int[] tempHierarchical = new int[10];
     int tempIndexOfHierarchical = 0;
     int numberOfimportedClasses = 0;
-    String[][] methodInformations = new String[100][4];
+    String[][] methodInformations = new String[100][10];
     int numberOfMethodInformations = 0;
     String[][] attributeInformations = new String[100][5];
     int numberOfattributeInformations = 0;
@@ -111,10 +111,10 @@ public class ProgramPrinter implements jythonListener {
             tempStr += "(name: " + ctx.getChild(1).getText() + ") (type: [ classType=" +
                     ctx.getChild(0).getText() + ", isDefiend: True]";
         } else {
-            for(int i = 0; i < numberOfimportedClasses; i++){
+            for (int i = 0; i < numberOfimportedClasses; i++) {
                 if (importedClasses[i].equals(ctx.getChild(0).getText()))
                     break;
-                if(i == numberOfimportedClasses - 1)
+                if (i == numberOfimportedClasses - 1)
                     System.out.println("Error105 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "],cannot find class [" + ctx.getChild(0).getText() + "]");
             }
             boolean isDefined = false;
@@ -161,9 +161,15 @@ public class ProgramPrinter implements jythonListener {
             attributeInformations[numberOfattributeInformations][4] = String.valueOf(hashNumber);
             numberOfattributeInformations++;
         }
-
-        String tempStr = "ClassArrayField (name: " + ctx.getChild(4).getText() + ") (type: [ classType=" +
-                ctx.getChild(0).getText() + ", isDefiend: False]";
+        String tmp = ctx.getChild(0).getText();
+        String tempStr = "";
+        if (tmp.equals("int") || tmp.equals("float") || tmp.equals("string") || tmp.equals("bool")) {
+            tempStr = "ArrayField (name: " + ctx.getChild(4).getText() + ") (type: [ classType=" +
+                    ctx.getChild(0).getText() + ", isDefiend: False]";
+        } else {
+            tempStr = "ClassArrayField (name: " + ctx.getChild(4).getText() + ") (type: [ classType=" +
+                    ctx.getChild(0).getText() + ", isDefiend: False]";
+        }
         if (isError)
             items.get(hashNumber).put("Field_" + ctx.getChild(4).getText() + "_" + ctx.start.getLine() + "_" + ctx.start.getCharPositionInLine(), tempStr);
         else
@@ -190,8 +196,8 @@ public class ProgramPrinter implements jythonListener {
         methodInformations[numberOfMethodInformations][1] = ctx.getChild(2).getText();
         methodInformations[numberOfMethodInformations][2] = String.valueOf(ctx.start.getLine());
         methodInformations[numberOfMethodInformations][3] = String.valueOf(ctx.start.getCharPositionInLine());
-        numberOfMethodInformations++;
-        if(isError)
+        methodInformations[numberOfMethodInformations][5] = "finished";
+        if (isError)
             blockStarts.add("---------" + ctx.getChild(2).getText() + "_" + ctx.start.getLine() + "_" + ctx.start.getCharPositionInLine() + ":" + ctx.start.getLine() + "---------");
         else
             blockStarts.add("---------" + ctx.getChild(2).getText() + ":" + ctx.start.getLine() + "---------");
@@ -201,7 +207,7 @@ public class ProgramPrinter implements jythonListener {
             hashNumber++;
         }
         String tempStr;
-        if(isError)
+        if (isError)
             tempStr = "Method (name : " + ctx.getChild(2).getText() + "_" + ctx.start.getLine() + "_" + ctx.start.getCharPositionInLine() + ") (return type: [";
         else
             tempStr = "Method (name : " + ctx.getChild(2).getText() + ") (return type: [";
@@ -222,18 +228,24 @@ public class ProgramPrinter implements jythonListener {
                     camaCounter++;
                 }
             }
+            methodInformations[numberOfMethodInformations][4] = String.valueOf(camaCounter + 1);
+            int k = 5;
             for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
                 if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
                     continue;
                 }
                 tempStr += "[type: " + ctx.getChild(counter).getChild(i).getChild(0).getText() + ",index:" + (j + 1) + "]";
-                j++;
+                methodInformations[numberOfMethodInformations][k] = ctx.getChild(counter).getChild(i).getChild(0).getText();
                 if (i < 2 * camaCounter)
                     tempStr += ", ";
+                k++;
+                j++;
             }
             tempStr += "]";
+            methodInformations[numberOfMethodInformations][k] = "finished";
         }
-        if(isError)
+        numberOfMethodInformations++;
+        if (isError)
             items.get(hashNumber).put("Method_" + ctx.getChild(2).getText() + "_" + ctx.start.getLine() + "_" + ctx.start.getCharPositionInLine(), tempStr);
         else
             items.get(hashNumber).put("Method_" + ctx.getChild(2).getText(), tempStr);
@@ -257,6 +269,17 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void exitMethodDec(jythonParser.MethodDecContext ctx) {
+        if (ctx.getText().contains("return")) {
+
+            String returnVal = ctx.getText().substring(ctx.getText().indexOf("return")+6,ctx.getText().indexOf("}"));
+            for (int i = 0; i < numberOfattributeInformations; i++) {
+                if (attributeInformations[i][1].equals(returnVal)) {
+                    if(!ctx.getChild(1).getText().equals(attributeInformations[i][0]))
+                        System.out.println("Error210 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() +
+                                "], ReturnType of this method must be ["+ctx.getChild(1).getText()+"]");
+                }
+            }
+        }
         hashNumber = 1;
         tempIndexOfHierarchical = 1;
     }
@@ -356,38 +379,38 @@ public class ProgramPrinter implements jythonListener {
 
             }
         }
-        if (ctx.getChild(0).getClass().getName().contains("Assignment")){
+        if (ctx.getChild(0).getClass().getName().contains("Assignment")) {
             boolean isAvailable = false;
             String tempStr = "";
-            if (!ctx.getChild(0).getChild(0).getClass().getName().contains("VarDec")){
+            if (!ctx.getChild(0).getChild(0).getClass().getName().contains("VarDec")) {
                 tempStr = ctx.getChild(0).getChild(0).getText();
                 if (ctx.getChild(0).getChild(0).getText().contains("self")) {
                     tempStr = ctx.getChild(0).getChild(0).getChild(2).getText();
                 }
-            }else{
+            } else {
                 tempStr = ctx.getChild(0).getChild(0).getChild(1).getText();
             }
-            for(int i = 0; tempHierarchical[i] != 0; i++){
-                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
+            for (int i = 0; tempHierarchical[i] != 0; i++) {
+                if (items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)) {
                     isAvailable = true;
                     break;
                 }
             }
-            if(!isAvailable)
+            if (!isAvailable)
                 System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
 
-            if(ctx.getChild(0).getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")) {
+            if (ctx.getChild(0).getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")) {
                 tempStr = ctx.getChild(0).getChild(2).getChild(2).getText();
-            }else if(!ctx.getChild(0).getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")){
+            } else if (!ctx.getChild(0).getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")) {
                 tempStr = ctx.getChild(0).getChild(2).getText();
             }
-            for(int i = 0; tempHierarchical[i] != 0; i++){
-                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
+            for (int i = 0; tempHierarchical[i] != 0; i++) {
+                if (items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)) {
                     isAvailable = true;
                     break;
                 }
             }
-            if(!isAvailable)
+            if (!isAvailable)
                 System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
         }
     }
@@ -428,7 +451,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterIf_statment(jythonParser.If_statmentContext ctx) {
-        if(ctx.depth() < 8)
+        if (ctx.depth() < 8)
             blockStarts.add("---------if:" + ctx.start.getLine() + "---------");
         else
             blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
@@ -449,7 +472,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterWhile_statment(jythonParser.While_statmentContext ctx) {
-        if(ctx.depth() < 8)
+        if (ctx.depth() < 8)
             blockStarts.add("---------while:" + ctx.start.getLine() + "---------");
         else
             blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
@@ -470,7 +493,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterIf_else_statment(jythonParser.If_else_statmentContext ctx) {
-        if(ctx.depth() < 8)
+        if (ctx.depth() < 8)
             blockStarts.add("---------if_else:" + ctx.start.getLine() + "---------");
         else
             blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
@@ -502,7 +525,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterFor_statment(jythonParser.For_statmentContext ctx) {
-        if(ctx.depth() < 8)
+        if (ctx.depth() < 8)
             blockStarts.add("---------for:" + ctx.start.getLine() + "---------");
         else
             blockStarts.add("---------nested:" + ctx.start.getLine() + "---------");
@@ -523,10 +546,76 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterMethod_call(jythonParser.Method_callContext ctx) {
-/*
-        String tempStr = items.get(1).get("Method_" + ctx.getChild(0).getText());
-        System.out.println(ctx.getChild(1).getText() + " " + ctx.start.getLine());
-*/
+        for (int i = 0; i < numberOfMethodInformations; i++) {
+            if (methodInformations[i][1].equals(ctx.getChild(0).getText())) {
+                int numberOfParametersInMethodDec = Integer.parseInt(methodInformations[i][4]);
+                int numberOfParametersInMethodCall = 0;
+                if (!ctx.getChild(1).getText().equals("()")) {
+                    numberOfParametersInMethodCall = 1;
+                    for (int k = 0; k < ctx.getChild(1).getChild(1).getText().length(); k++) {
+                        if (ctx.getChild(1).getChild(1).getText().charAt(k) == ',') {
+                            numberOfParametersInMethodCall++;
+                        }
+                    }
+                }
+                if (numberOfParametersInMethodCall != numberOfParametersInMethodDec)
+                    System.out.println("Error220 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Mismatch arguments.");
+                else if (numberOfParametersInMethodDec >= 1) {
+                    boolean isFalse = false;
+                    int j = 5, p = 0;
+                    while (!methodInformations[i][j].equals("finished")) {
+                        if (numberOfParametersInMethodDec == 1) {
+                            boolean isAvailable = false;
+                            for (int n = 0; tempHierarchical[n] != 0; n++) {
+                                if (items.get(tempHierarchical[n]).containsKey("Field_" + ctx.getChild(1).getChild(1).getText())) {
+                                    isAvailable = true;
+                                    break;
+                                }
+                            }
+                            if (!isAvailable) {
+                                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + ctx.getChild(1).getChild(1).getText() + "]");
+                                break;
+                            }
+                            for (int l = 0; l < numberOfattributeInformations; l++) {
+                                if (attributeInformations[l][1].equals(ctx.getChild(1).getChild(1).getText())) {
+                                    if (!attributeInformations[l][0].equals(methodInformations[i][j])) {
+                                        isFalse = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            boolean isAvailable = false;
+                            for (int n = 0; tempHierarchical[n] != 0; n++) {
+                                if (items.get(tempHierarchical[n]).containsKey("Field_" + ctx.getChild(1).getChild(1).getChild(p).getText())) {
+                                    isAvailable = true;
+                                    break;
+                                }
+                            }
+                            if (!isAvailable) {
+                                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + ctx.getChild(1).getChild(1).getChild(p).getText() + "]");
+                                break;
+                            }
+                            for (int l = 0; l < numberOfattributeInformations; l++) {
+                                if (attributeInformations[l][1].equals(ctx.getChild(1).getChild(1).getChild(p).getText())) {
+                                    if (!attributeInformations[l][0].equals(methodInformations[i][j])) {
+                                        isFalse = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (isFalse) {
+                            System.out.println("Error220 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Mismatch arguments.");
+                            break;
+                        }
+                        p += 2;
+                        j++;
+                    }
+                }
+                break;
+            }
+        }
     }
 
     @Override
@@ -536,46 +625,63 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterAssignment(jythonParser.AssignmentContext ctx) {
-        System.out.println(ctx.getChild(0).getText() + " " + ctx.start.getLine());
-
-            boolean isAvailable = false;
-            String tempStr = "";
-            if (!ctx.getChild(0).getClass().getName().contains("VarDec")){
-                tempStr = ctx.getChild(0).getText();
-                if (ctx.getChild(0).getText().contains("self")) {
-                    tempStr = ctx.getChild(0).getChild(2).getText();
-                }
-            }else{
-                tempStr = ctx.getChild(0).getChild(1).getText();
-            }
-            for(int i = 0; tempHierarchical[i] != 0; i++){
-                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
-                    isAvailable = true;
-                    break;
-                }
-            }
-            if(!isAvailable)
-                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
-
-            if(ctx.getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")) {
-                tempStr = ctx.getChild(2).getChild(2).getText();
-            }else if(!ctx.getChild(2).getText().contains("self") && !ctx.getChild(0).getChild(2).getText().contains("(")){
-                tempStr = ctx.getChild(2).getText();
-            }
-            for(int i = 0; tempHierarchical[i] != 0; i++){
-                if(items.get(tempHierarchical[i]).containsKey("Field_" + tempStr)){
-                    isAvailable = true;
-                    break;
-                }
-            }
-            if(!isAvailable)
-                System.out.println("Error106 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() + "], Can not find Variable [" + tempStr + "]");
-
     }
 
     @Override
     public void exitAssignment(jythonParser.AssignmentContext ctx) {
+        boolean isCorrect = false;
+        String leftAttr;
+        if (!ctx.getChild(0).getClass().getName().contains("VarDec")) {
+            leftAttr = ctx.getChild(0).getText();
+            if (ctx.getChild(0).getText().contains("self")) {
+                leftAttr = ctx.getChild(0).getChild(2).getText();
+            }
+        } else {
+            leftAttr = ctx.getChild(0).getChild(1).getText();
+        }
 
+        String rightAttr;
+        if (ctx.getChild(2).getText().contains("self")) {
+            rightAttr = ctx.getChild(2).getChild(0).getChild(2).getText();
+            if (ctx.getChild(2).getText().contains("()"))
+                rightAttr += "()";
+        } else
+            rightAttr = ctx.getChild(2).getText();
+
+        String leftAttrClass = "null";
+        String rightAttrClass = "null";
+        int attrCount = 0;
+        for (int i = 0; i < numberOfattributeInformations; i++) {
+            for (int j = 0; tempHierarchical[j] != 0; j++) {
+                if (tempHierarchical[j] == Integer.parseInt(attributeInformations[i][4])) {
+                    if (attributeInformations[i][1].equals(leftAttr)) {
+                        leftAttrClass = attributeInformations[i][0];
+                        attrCount++;
+                    }
+                    if (attributeInformations[i][1].equals(rightAttr)) {
+                        rightAttrClass = attributeInformations[i][0];
+                        attrCount++;
+                    }
+                }
+            }
+        }
+        if (attrCount == 2 && leftAttrClass.equals(rightAttrClass)) {
+            isCorrect = true;
+        }
+        if (rightAttr.contains("()")) {
+            for (int i = 0; i < numberOfMethodInformations; i++) {
+                if (rightAttr.contains(methodInformations[i][1])) {
+                    rightAttrClass = methodInformations[i][0];
+                    if (leftAttrClass.contains(methodInformations[i][0])) {
+                        isCorrect = true;
+                    }
+                }
+            }
+        }
+        if (isCorrect == false) {
+            System.out.println("Error230 : in line [" + ctx.start.getLine() + ":" + ctx.start.getCharPositionInLine() +
+                    "], Incompatible types : [" + leftAttrClass + "] can not be converted to [" + rightAttrClass + "]");
+        }
     }
 
     @Override
