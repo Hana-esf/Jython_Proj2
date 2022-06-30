@@ -6,10 +6,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import java.sql.Array;
-import java.sql.SQLOutput;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Map;
 
@@ -56,6 +53,8 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterClassDef(jythonParser.ClassDefContext ctx) {
+        importedClasses[numberOfimportedClasses] = ctx.CLASSNAME(0).getText();
+        numberOfimportedClasses++;
         String tempStr = "Class (name: " + ctx.CLASSNAME(0) + ")" + "(parent: ";
         for (int i = 1; i < ctx.CLASSNAME().size() - 1; i++) {
             tempStr += ctx.CLASSNAME(i) + ", ";
@@ -73,7 +72,7 @@ public class ProgramPrinter implements jythonListener {
 
     @Override
     public void enterClass_body(jythonParser.Class_bodyContext ctx) {
-        //System.out.println(ctx.start.getLine());
+
     }
 
     @Override
@@ -88,6 +87,7 @@ public class ProgramPrinter implements jythonListener {
             items.add(temp);
             hashNumber++;
         }
+
         boolean isError = false;
         for (int i = 0; i < numberOfattributeInformations; i++) {
             if (attributeInformations[i][1].equals(ctx.getChild(1).getText()) && attributeInformations[i][4].equals(String.valueOf(hashNumber))) {
@@ -106,8 +106,16 @@ public class ProgramPrinter implements jythonListener {
 
         String tmp = ctx.getChild(0).getText();
         String tempStr;
+
+        boolean isParameter = false;
+        if(ctx.getParent().getClass().getName().contains("Parameter"))//tu enterMethodDec tarif shode inja age bere eshteba overwrite mishe
+            isParameter = true;
+
         if (tmp.equals("int") || tmp.equals("float") || tmp.equals("string") || tmp.equals("bool")) {
-            tempStr = "Field ";
+            if(ctx.getParent().getClass().getName().contains("Class_body"))
+                tempStr = "Field ";
+            else
+                tempStr = "MethodField ";
             tempStr += "(name: " + ctx.getChild(1).getText() + ") (type: [ classType=" +
                     ctx.getChild(0).getText() + ", isDefiend: True]";
         } else {
@@ -123,10 +131,19 @@ public class ProgramPrinter implements jythonListener {
                     isDefined = true;
                 }
             }
-            tempStr = "ClassField ";
+
+            if(ctx.getParent().getClass().getName().contains("Class_body"))
+                tempStr = "ClassField ";
+            else
+                tempStr = "MethodField ";
+
             tempStr += "(name: " + ctx.getChild(1).getText() + ") (type: [ classType=" +
                     ctx.getChild(0).getText() + ", isDefiend:" + isDefined + "]";
         }
+
+        if(isParameter)
+            tempStr = items.get(hashNumber).get("Field_" + ctx.getChild(1).getText());
+
         if (isError)
             items.get(hashNumber).put("Field_" + ctx.getChild(1).getText() + "_" + ctx.start.getLine() + "_" + ctx.start.getCharPositionInLine(), tempStr);
         else
@@ -254,12 +271,38 @@ public class ProgramPrinter implements jythonListener {
         hashNumber = items.size() - 1;
         tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
         tempIndexOfHierarchical++;
+
+        boolean isDefined;
+        boolean classType;
+
         if (!ctx.getChild(counter).getText().equals(")")) {
             for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
                 if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
                     continue;
                 }
-                tempStr = "Parameter (name:" + ctx.getChild(counter).getChild(i).getChild(1).getText() + ") (type:" + ctx.getChild(counter).getChild(i).getChild(0).getText() + ") (index: " + (j + 1) + ")";
+
+                isDefined = false;
+                classType = false;
+                for (int z = 0; z < numberOfimportedClasses; z++) {
+                    if (ctx.getChild(counter).getChild(i).getChild(0).getText().equals(importedClasses[z])) {
+                        isDefined = true;
+                        classType = true;
+                    }
+                }
+                if (ctx.getChild(counter).getChild(i).getChild(0).getText().equals("int") || ctx.getChild(counter).getChild(i).getChild(0).getText().equals("string")
+                        || ctx.getChild(counter).getChild(i).getChild(0).getText().equals("float") || ctx.getChild(counter).getChild(i).getChild(0).getText().equals("bool"))
+                    isDefined = true;
+
+                tempStr = "Parameter (name:" + ctx.getChild(counter).getChild(i).getChild(1).getText() + ") ";
+
+                if(!classType && isDefined) //int string float bool (isdefined: baraye inke class hayii ke import nashodan)
+                    tempStr += "(type:" + ctx.getChild(counter).getChild(i).getChild(0).getText() + ")";
+                else{
+                    tempStr += "(type: [classtyped= " + ctx.getChild(counter).getChild(i).getChild(0).getText() + ", isDefiend:" + isDefined + "])";
+                }
+                tempStr +=  " (index: " + (j + 1) + ")";
+
+
                 items.get(hashNumber).put("Field_" + ctx.getChild(counter).getChild(i).getChild(1).getText(), tempStr);
                 j++;
             }
@@ -318,12 +361,37 @@ public class ProgramPrinter implements jythonListener {
         hashNumber = items.size() - 1;
         tempHierarchical[tempIndexOfHierarchical] = items.size() - 1;
         tempIndexOfHierarchical++;
+
+        boolean isDefined;
+        boolean classType;
         if (!ctx.getChild(counter).getText().equals(")")) {
             for (int i = 0, j = 0; i < 2 * camaCounter + 1; i++) {
                 if (ctx.getChild(counter).getChild(i).getText().equals(",")) {
                     continue;
                 }
-                tempStr = "Parameter (name:" + ctx.getChild(counter).getChild(i).getChild(1).getText() + ") (type:" + ctx.getChild(counter).getChild(i).getChild(0).getText() + ") (index: " + (j + 1) + ")";
+
+                isDefined = false;
+                classType = false;
+                for (int z = 0; z < numberOfimportedClasses; z++) {
+                    if (ctx.getChild(counter).getChild(i).getChild(0).getText().equals(importedClasses[z])) {
+                        isDefined = true;
+                        classType = true;
+                    }
+                }
+                if (ctx.getChild(counter).getChild(i).getChild(0).getText().equals("int") || ctx.getChild(counter).getChild(i).getChild(0).getText().equals("string")
+                        || ctx.getChild(counter).getChild(i).getChild(0).getText().equals("float") || ctx.getChild(counter).getChild(i).getChild(0).getText().equals("bool"))
+                    isDefined = true;
+
+                tempStr = "Parameter (name:" + ctx.getChild(counter).getChild(i).getChild(1).getText() + ") ";
+
+                if(!classType && isDefined) //int string float bool (isdefined: baraye inke class hayii ke import nashodan)
+                    tempStr += "(type:" + ctx.getChild(counter).getChild(i).getChild(0).getText() + ")";
+                else{
+                    tempStr += "(type: [classtyped= " + ctx.getChild(counter).getChild(i).getChild(0).getText() + ", isDefiend:" + isDefined + "])";
+                }
+                tempStr +=  " (index: " + (j + 1) + ")";
+
+
                 items.get(hashNumber).put("Field_" + ctx.getChild(counter).getChild(i).getChild(1).getText(), tempStr);
                 j++;
             }
@@ -362,7 +430,7 @@ public class ProgramPrinter implements jythonListener {
                     isDefined = true;
                 String tempStr = "MethodField (name: " + ctx.getChild(0).getChild(1).getText() +
                         ") (type: [classtyped= " + ctx.getChild(0).getChild(0).getText() + ", isDefiend:" + isDefined + "])";
-                items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(1).getText(), tempStr);
+
             } else if (ctx.getChild(0).getClass().getName().contains("Assignment") && ctx.getChild(0).getChild(0).getClass().getName().contains("VarDec")) {
                 boolean isDefined = false;
                 for (int i = 0; i < numberOfimportedClasses; i++) {
@@ -375,6 +443,7 @@ public class ProgramPrinter implements jythonListener {
                     isDefined = true;
                 String tempStr = "MethodField (name: " + ctx.getChild(0).getChild(0).getChild(1).getText() +
                         ") (type: [classtyped= " + ctx.getChild(0).getChild(0).getChild(0).getText() + ", isDefiend:" + isDefined + "])";
+
                 items.get(hashNumber).put("Field_" + ctx.getChild(0).getChild(0).getChild(1).getText(), tempStr);
 
             }
@@ -774,11 +843,6 @@ public class ProgramPrinter implements jythonListener {
 
     }
 
-//    public String toString(String name, int scopeNumber){
-//        return "------------ " + name + " : " + scopeNumber + " -------------\n" +
-//                printItem() + "---------------------------------------------\n";
-//    }
-
     public void printItem() {
         for (int i = 0; i < items.size(); i++) {
             String itemStr = "";
@@ -787,7 +851,7 @@ public class ProgramPrinter implements jythonListener {
             }
             System.out.println(blockStarts.get(i));
             System.out.println(itemStr);
-            System.out.println("==========================================================================================");
+            System.out.println("==============================================================================================");
         }
     }
 }

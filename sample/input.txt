@@ -15,12 +15,12 @@ class Human(Nothing, Nothing2){
         return voice
     }
     def void eat(Food food, int c){
+        Voice food
         calories += c
         Drink water
-        newFood = food
 
         while(self.isHungry){
-            Food newFood = Food()
+            Voice newFood = speak()
             if(s == 1){
                 int a
             }
